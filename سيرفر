@@ -1,0 +1,76 @@
+const express = require("express");
+const app = express();
+
+const http = require("http").createServer(app);
+
+const io = require("socket.io")(http,{
+    cors:{
+        origin:"*"
+    }
+});
+
+let players = {};
+let obstacles = [];
+
+io.on("connection",(socket)=>{
+
+    players[socket.id] = {
+        x:100 + Object.keys(players).length * 100,
+        y:220,
+        color: "#" + Math.floor(Math.random()*16777215).toString(16)
+    };
+
+    io.emit("currentPlayers",players);
+
+    socket.on("jump",()=>{
+
+        players[socket.id].y = 150;
+
+        io.emit("playerMoved",{
+            id:socket.id,
+            y:150
+        });
+
+        setTimeout(()=>{
+            players[socket.id].y = 220;
+
+            io.emit("playerMoved",{
+                id:socket.id,
+                y:220
+            });
+
+        },500);
+    });
+
+    socket.on("disconnect",()=>{
+        delete players[socket.id];
+        io.emit("currentPlayers",players);
+    });
+});
+
+setInterval(()=>{
+
+    obstacles.push({
+        x:1000,
+        y:220,
+        w:25,
+        h:40
+    });
+
+},2000);
+
+setInterval(()=>{
+
+    obstacles.forEach(obs=>{
+        obs.x -= 7;
+    });
+
+    obstacles = obstacles.filter(obs=>obs.x > -50);
+
+    io.emit("obstacles",obstacles);
+
+},50);
+
+http.listen(3000,()=>{
+    console.log("server running");
+});
